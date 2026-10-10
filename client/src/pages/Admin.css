@@ -1,0 +1,74 @@
+.admin-page {
+  padding: calc(var(--nav-height) + 32px) 24px 80px;
+  max-width: var(--max-width-wide);
+  margin: 0 auto;
+}
+
+.admin-header {
+  margin-bottom: 32px;
+}
+
+.admin-denied {
+  text-align: center;
+  padding: 120px 24px;
+}
+
+.admin-panel {
+  padding: 32px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  margin-bottom: 24px;
+}
+
+.threshold-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.users-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+}
+
+.role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.role-badge.admin {
+  background: rgba(0, 113, 227, 0.1);
+  color: var(--accent);
+}
+
+.role-badge.viewer {
+  background: rgba(110, 110, 115, 0.1);
+  color: var(--muted);
+}
+
+.notif-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.notif-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--nav-border);
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.notif-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
