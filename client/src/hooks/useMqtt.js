@@ -47,12 +47,16 @@ export function useMqtt() {
     demoMode,
     setDemoMode,
     addToast,
+    commMode,
   } = useStore();
 
   // Helper to publish a single control state
   const publishControl = useCallback((controlKey, isEnabled) => {
     // Always update local store immediately
     setSensorControl(controlKey, isEnabled);
+
+    // Only send MQTT commands if in MQTT mode
+    if (useStore.getState().commMode !== 'mqtt') return;
 
     const client = clientRef.current;
     const subTopic = TOPIC_MAP[controlKey];
@@ -77,6 +81,8 @@ export function useMqtt() {
 
   // Synchronize all saved control states to MQTT broker (called on connect or ESP32 birth)
   const syncAllControls = useCallback(() => {
+    if (useStore.getState().commMode !== 'mqtt') return;
+
     const client = clientRef.current;
     if (!client || !client.connected) return;
 
@@ -92,6 +98,14 @@ export function useMqtt() {
   }, [mqttTopicPrefix]);
 
   useEffect(() => {
+    // Only connect when in MQTT mode
+    if (commMode !== 'mqtt') {
+      const s = useStore.getState();
+      s.setMqttConnected(false);
+      s.setMqttStatus('disconnected');
+      return;
+    }
+
     const store = useStore.getState();
     store.setMqttStatus('connecting');
 
@@ -249,7 +263,7 @@ export function useMqtt() {
         client.end(true);
       }
     };
-  }, [mqttBrokerUrl, mqttTopicPrefix, syncAllControls]);
+  }, [commMode, mqttBrokerUrl, mqttTopicPrefix, syncAllControls]);
 
   return {
     publishControl,

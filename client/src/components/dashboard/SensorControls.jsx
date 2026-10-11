@@ -29,6 +29,11 @@ export default function SensorControls({ publishControl, syncAllControls }) {
     readings,
     deviceOnline,
     dataSource,
+    commMode,
+    setCommMode,
+    esp32HttpUrl,
+    setEsp32HttpUrl,
+    httpConnected,
     mqttConnected,
     mqttStatus,
     mqttBrokerUrl,
@@ -39,6 +44,8 @@ export default function SensorControls({ publishControl, syncAllControls }) {
   } = useStore();
 
   const [showConfig, setShowConfig] = useState(false);
+  const [modeInput, setModeInput] = useState(commMode);
+  const [httpUrlInput, setHttpUrlInput] = useState(esp32HttpUrl);
   const [brokerInput, setBrokerInput] = useState(mqttBrokerUrl);
   const [prefixInput, setPrefixInput] = useState(mqttTopicPrefix);
 
@@ -49,8 +56,11 @@ export default function SensorControls({ publishControl, syncAllControls }) {
     } else {
       setSensorControl(key, nextVal);
     }
+    const dest = commMode === 'http'
+      ? `HTTP POST ${esp32HttpUrl}/api/control`
+      : `MQTT ${mqttTopicPrefix}/control/${TOPIC_MAP[key] || key}`;
     addToast(
-      `${key.toUpperCase()} set to ${nextVal ? 'ON' : 'OFF'} (Published to ${mqttTopicPrefix}/control/${TOPIC_MAP[key] || key})`,
+      `${key.toUpperCase()} set to ${nextVal ? 'ON' : 'OFF'} (${dest})`,
       'info'
     );
   };
@@ -66,22 +76,28 @@ export default function SensorControls({ publishControl, syncAllControls }) {
 
   const handleSaveConfig = (e) => {
     e.preventDefault();
+    setCommMode(modeInput);
+    setEsp32HttpUrl(httpUrlInput.trim());
     setMqttBrokerUrl(brokerInput.trim());
     setMqttTopicPrefix(prefixInput.trim());
     setShowConfig(false);
-    addToast('MQTT Configuration updated. Reloading connection...', 'success');
-    window.location.reload();
+    addToast(`Configuration saved. Active mode: ${modeInput === 'http' ? 'Direct Wi-Fi HTTP' : 'Cloud MQTT'}`, 'success');
   };
 
   const handleResetConfig = () => {
     const defaultUrl = 'wss://broker.hivemq.com:8884/mqtt';
     const defaultPrefix = 'iot-hub';
+    const defaultHttpUrl = 'http://192.168.4.1';
+    setModeInput('mqtt');
+    setHttpUrlInput(defaultHttpUrl);
     setBrokerInput(defaultUrl);
     setPrefixInput(defaultPrefix);
+    setCommMode('mqtt');
+    setEsp32HttpUrl(defaultHttpUrl);
     setMqttBrokerUrl(defaultUrl);
     setMqttTopicPrefix(defaultPrefix);
     setShowConfig(false);
-    addToast('MQTT Settings reset to defaults', 'info');
+    addToast('Hardware settings reset to defaults (MQTT mode)', 'info');
   };
 
   // Sensor definitions with icons, descriptions, and dynamic readings
@@ -219,18 +235,25 @@ export default function SensorControls({ publishControl, syncAllControls }) {
       <div className="controls-header-card">
         <div className="controls-header-text">
           <div className="controls-header-badge">
-            <Radio size={14} className={mqttConnected ? 'icon-pulse' : ''} />
-            <span>MQTT Command Center</span>
-            <span className={`status-pill ${mqttConnected ? 'online' : 'offline'}`}>
-              {mqttStatus.toUpperCase()}
+            <Radio size={14} className={commMode === 'http' ? (httpConnected ? 'icon-pulse' : '') : (mqttConnected ? 'icon-pulse' : '')} />
+            <span>{commMode === 'http' ? 'Direct Wi-Fi HTTP Command Center' : 'MQTT Command Center'}</span>
+            <span className={`status-pill ${commMode === 'http' ? (httpConnected ? 'online' : 'offline') : (mqttConnected ? 'online' : 'offline')}`}>
+              {commMode === 'http' ? (httpConnected ? 'HTTP ONLINE' : 'HTTP OFFLINE') : mqttStatus.toUpperCase()}
             </span>
           </div>
           <h2 className="headline-small" style={{ margin: '8px 0 4px' }}>
             Hardware Sensor & Actuator Controls
           </h2>
           <p className="body-default" style={{ color: 'var(--muted)' }}>
-            Toggle individual hardware sensors on your ESP32 in real time. Commands are published as{' '}
-            <code>ON</code> / <code>OFF</code> via HiveMQ WebSockets with retain flags and synchronized automatically when the ESP32 reconnects.
+            {commMode === 'http' ? (
+              <>
+                Operating in <strong>Direct Wi-Fi HTTP Mode</strong>. Commands are sent directly to your local ESP32 at <code>{esp32HttpUrl}/api/control</code> via non-blocking REST calls with CORS.
+              </>
+            ) : (
+              <>
+                Operating in <strong>Cloud MQTT Mode</strong>. Commands are published as <code>ON</code> / <code>OFF</code> via HiveMQ WebSockets and retained automatically.
+              </>
+            )}
           </p>
         </div>
 
@@ -238,7 +261,7 @@ export default function SensorControls({ publishControl, syncAllControls }) {
           <button
             onClick={syncAllControls}
             className="control-action-btn sync-btn"
-            title="Republish all switch states to broker"
+            title="Synchronize all switch states to ESP32"
           >
             <RefreshCw size={15} />
             <span>Sync All to ESP32</span>
@@ -246,15 +269,15 @@ export default function SensorControls({ publishControl, syncAllControls }) {
           <button
             onClick={() => setShowConfig(!showConfig)}
             className="control-action-btn config-btn"
-            title="Configure MQTT broker and topics"
+            title="Configure communication mode and connection settings"
           >
             <Settings size={15} />
-            <span>MQTT Config</span>
+            <span>Connection Config</span>
           </button>
         </div>
       </div>
 
-      {/* Expandable MQTT Broker Configuration */}
+      {/* Expandable Communication Mode & Settings Configuration */}
       <AnimatePresence>
         {showConfig && (
           <motion.div
@@ -264,38 +287,121 @@ export default function SensorControls({ publishControl, syncAllControls }) {
             exit={{ height: 0, opacity: 0 }}
           >
             <form onSubmit={handleSaveConfig} className="mqtt-config-form">
-              <h4 style={{ margin: '0 0 12px', fontSize: '15px' }}>Broker & Topic Settings</h4>
-              <div className="config-grid">
-                <div className="form-group">
-                  <label className="form-label">Browser WebSocket URL</label>
-                  <input
-                    className="form-input"
-                    type="text"
-                    value={brokerInput}
-                    onChange={(e) => setBrokerInput(e.target.value)}
-                    placeholder="wss://broker.hivemq.com:8884/mqtt"
-                  />
-                  <span className="caption">
-                    Public HiveMQ: <code>wss://broker.hivemq.com:8884/mqtt</code> (TCP port for ESP32 is <code>1883</code>)
-                  </span>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">MQTT Topic Prefix</label>
-                  <input
-                    className="form-input"
-                    type="text"
-                    value={prefixInput}
-                    onChange={(e) => setPrefixInput(e.target.value)}
-                    placeholder="iot-hub"
-                  />
-                  <span className="caption">
-                    Command topics: <code>{prefixInput}/control/&lt;sensor&gt;</code>
-                  </span>
+              <h4 style={{ margin: '0 0 12px', fontSize: '15px' }}>Communication Mode & Hardware Settings</h4>
+              
+              {/* Mode Toggle Buttons */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>Active Mode</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModeInput('mqtt')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: modeInput === 'mqtt' ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)',
+                      background: modeInput === 'mqtt' ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255,255,255,0.03)',
+                      color: modeInput === 'mqtt' ? '#a78bfa' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div>Cloud MQTT Mode (Default)</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 400, marginTop: '2px' }}>
+                      HiveMQ WebSocket Broker
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModeInput('http')}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: modeInput === 'http' ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      background: modeInput === 'http' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
+                      color: modeInput === 'http' ? '#38bdf8' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div>Direct Wi-Fi HTTP Mode</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 400, marginTop: '2px' }}>
+                      Local ESP32 IP REST Polling
+                    </div>
+                  </button>
                 </div>
               </div>
-              <div className="config-form-actions">
+
+              {/* Mode-specific settings */}
+              {modeInput === 'http' ? (
+                <div className="config-grid">
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">ESP32 Local Base URL / IP Address</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      value={httpUrlInput}
+                      onChange={(e) => setHttpUrlInput(e.target.value)}
+                      placeholder="http://192.168.4.1 or http://192.168.1.100"
+                    />
+                    <span className="caption" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                      Presets:
+                      <button
+                        type="button"
+                        onClick={() => setHttpUrlInput('http://192.168.4.1')}
+                        style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        192.168.4.1 (ESP32 AP)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHttpUrlInput('http://192.168.1.100')}
+                        style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        192.168.1.100
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="config-grid">
+                  <div className="form-group">
+                    <label className="form-label">Browser WebSocket URL</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      value={brokerInput}
+                      onChange={(e) => setBrokerInput(e.target.value)}
+                      placeholder="wss://broker.hivemq.com:8884/mqtt"
+                    />
+                    <span className="caption">
+                      Public HiveMQ: <code>wss://broker.hivemq.com:8884/mqtt</code>
+                    </span>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">MQTT Topic Prefix</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      value={prefixInput}
+                      onChange={(e) => setPrefixInput(e.target.value)}
+                      placeholder="iot-hub"
+                    />
+                    <span className="caption">
+                      Command topics: <code>{prefixInput}/control/&lt;sensor&gt;</code>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="config-form-actions" style={{ marginTop: '16px' }}>
                 <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }}>
-                  Save & Reconnect
+                  Save & Apply Mode
                 </button>
                 <button
                   type="button"
@@ -303,7 +409,7 @@ export default function SensorControls({ publishControl, syncAllControls }) {
                   className="btn-secondary"
                   style={{ padding: '8px 16px', fontSize: '13px' }}
                 >
-                  Reset Defaults
+                  Reset Defaults (MQTT)
                 </button>
               </div>
             </form>
@@ -409,14 +515,14 @@ export default function SensorControls({ publishControl, syncAllControls }) {
                 </div>
               </div>
 
-              {/* Card Footer with MQTT Topic */}
+              {/* Card Footer with MQTT Topic / HTTP Endpoint */}
               <div className="sensor-card-footer">
                 <div className="state-indicator-pill">
                   <span className={`state-dot ${isEnabled ? 'active-dot' : 'inactive-dot'}`} />
                   <span className="state-text">{isEnabled ? 'ENABLED (ON)' : 'DISABLED (OFF)'}</span>
                 </div>
-                <span className="topic-tag" title="MQTT Command Topic">
-                  <code>{sensor.topic}</code>
+                <span className="topic-tag" title={commMode === 'http' ? 'Direct HTTP API' : 'MQTT Command Topic'}>
+                  <code>{commMode === 'http' ? `${esp32HttpUrl}/api/control` : sensor.topic}</code>
                 </span>
               </div>
             </motion.div>
@@ -475,8 +581,8 @@ export default function SensorControls({ publishControl, syncAllControls }) {
                 <span className={`actuator-status-text ${isActive ? 'active' : 'inactive'}`}>
                   {isActive ? actuator.activeText : actuator.inactiveText}
                 </span>
-                <span className="topic-tag">
-                  <code>{actuator.topic}</code>
+                <span className="topic-tag" title={commMode === 'http' ? 'Direct HTTP API' : 'MQTT Command Topic'}>
+                  <code>{commMode === 'http' ? `${esp32HttpUrl}/api/control` : actuator.topic}</code>
                 </span>
               </div>
             </motion.div>

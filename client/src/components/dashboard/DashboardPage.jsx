@@ -24,6 +24,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'rec
 import useStore from '../../store/useStore';
 import { useDemoMode } from '../../hooks/useDemoMode';
 import useMqtt from '../../hooks/useMqtt';
+import useDirectHttp from '../../hooks/useDirectHttp';
 import SensorControls from './SensorControls';
 import './Dashboard.css';
 
@@ -36,6 +37,11 @@ export default function DashboardPage() {
     readingsHistory,
     deviceOnline,
     lastSeen,
+    commMode,
+    setCommMode,
+    esp32HttpUrl,
+    httpConnected,
+    httpStatus,
     mqttConnected,
     mqttStatus,
     demoMode,
@@ -47,8 +53,12 @@ export default function DashboardPage() {
     addToast,
   } = useStore();
 
-  // Initialize MQTT connection to broker.hivemq.com & sync
-  const { publishControl, syncAllControls } = useMqtt();
+  // Dual Communication Engine: MQTT (Cloud) vs Direct Wi-Fi HTTP (Local)
+  const mqttHook = useMqtt();
+  const httpHook = useDirectHttp();
+
+  const publishControl = commMode === 'http' ? httpHook.publishControl : mqttHook.publishControl;
+  const syncAllControls = commMode === 'http' ? httpHook.syncAllControls : mqttHook.syncAllControls;
 
   // Start simulated demo mode (if enabled and no real ESP32 streaming)
   useDemoMode();
@@ -56,8 +66,9 @@ export default function DashboardPage() {
   const handleBuzzerToggle = () => {
     const nextState = !sensorControls.buzzer;
     publishControl('buzzer', nextState);
+    const targetDesc = commMode === 'http' ? `HTTP POST to ${esp32HttpUrl}/api/control` : 'iot-hub/control/buzzer';
     addToast(
-      nextState ? 'Buzzer siren activated (Published ON to iot-hub/control/buzzer)' : 'Buzzer siren deactivated (Published OFF)',
+      nextState ? `Buzzer siren activated (${targetDesc})` : 'Buzzer siren deactivated',
       nextState ? 'warn' : 'info'
     );
   };
@@ -72,7 +83,7 @@ export default function DashboardPage() {
             {dataSource === 'esp32' ? (
               <span className="data-source-badge real">
                 <Radio size={13} className="icon-pulse" />
-                Live ESP32 Hardware Data (Real Device)
+                Live ESP32 Hardware Data ({commMode === 'http' ? 'Direct Wi-Fi HTTP' : 'HiveMQ MQTT'})
               </span>
             ) : demoMode ? (
               <span className="data-source-badge demo">
@@ -89,20 +100,56 @@ export default function DashboardPage() {
         </div>
 
         <div className="dashboard-controls">
-          {/* MQTT Connection Status */}
+          {/* Mode Selector Pill */}
+          <button
+            onClick={() => {
+              const nextMode = commMode === 'mqtt' ? 'http' : 'mqtt';
+              setCommMode(nextMode);
+              addToast(
+                nextMode === 'http'
+                  ? `Direct Wi-Fi HTTP Demo Mode activated (Polling ${esp32HttpUrl})`
+                  : 'Cloud MQTT Mode activated (HiveMQ Broker)',
+                'info'
+              );
+            }}
+            className={`mode-toggle-btn ${commMode === 'http' ? 'mode-badge-http' : 'mode-badge-mqtt'}`}
+            title={`Active: ${commMode === 'http' ? 'Direct Wi-Fi HTTP' : 'Cloud MQTT'}. Click to switch.`}
+            aria-label="Toggle communication mode"
+          >
+            <Radio size={12} className={deviceOnline ? 'icon-pulse' : ''} />
+            <span>{commMode === 'http' ? 'Direct Wi-Fi HTTP' : 'MQTT (HiveMQ)'}</span>
+          </button>
+
+          {/* Connection Status */}
           <div className="connection-status">
-            {mqttConnected ? (
-              <span className="status-badge online" title="Connected to HiveMQ WebSocket">
-                <Wifi size={12} /> HiveMQ Connected
-              </span>
-            ) : mqttStatus === 'connecting' ? (
-              <span className="status-badge offline" style={{ color: '#f59e0b' }}>
-                <Wifi size={12} className="icon-pulse" /> Connecting...
-              </span>
+            {commMode === 'http' ? (
+              httpConnected ? (
+                <span className="status-badge online" title={`Connected directly to ${esp32HttpUrl}`}>
+                  <Wifi size={12} /> Wi-Fi HTTP Connected
+                </span>
+              ) : httpStatus === 'polling' ? (
+                <span className="status-badge offline" style={{ color: '#f59e0b' }}>
+                  <Wifi size={12} className="icon-pulse" /> Connecting HTTP...
+                </span>
+              ) : (
+                <span className="status-badge offline" title={`Could not reach ${esp32HttpUrl}`}>
+                  <WifiOff size={12} /> HTTP Offline
+                </span>
+              )
             ) : (
-              <span className="status-badge offline" title="Disconnected from broker">
-                <WifiOff size={12} /> Disconnected
-              </span>
+              mqttConnected ? (
+                <span className="status-badge online" title="Connected to HiveMQ WebSocket">
+                  <Wifi size={12} /> HiveMQ Connected
+                </span>
+              ) : mqttStatus === 'connecting' ? (
+                <span className="status-badge offline" style={{ color: '#f59e0b' }}>
+                  <Wifi size={12} className="icon-pulse" /> Connecting...
+                </span>
+              ) : (
+                <span className="status-badge offline" title="Disconnected from broker">
+                  <WifiOff size={12} /> Disconnected
+                </span>
+              )
             )}
           </div>
 
@@ -111,7 +158,7 @@ export default function DashboardPage() {
             onClick={toggleDemoMode}
             className="demo-toggle"
             aria-label={`${demoMode ? 'Disable' : 'Enable'} demo mode`}
-            title={demoMode ? 'Switch to Live MQTT Mode' : 'Switch to Demo Simulated Mode'}
+            title={demoMode ? 'Switch to Live Hardware Mode' : 'Switch to Demo Simulated Mode'}
           >
             {demoMode ? <ToggleRight size={20} color="var(--ok)" /> : <ToggleLeft size={20} />}
             <span className="caption">Demo Mode</span>
@@ -213,7 +260,9 @@ export default function DashboardPage() {
         <div className="device-info-row">
           <span className="caption">Active Operating Mode</span>
           <span className="caption">
-            {dataSource === 'esp32'
+            {commMode === 'http'
+              ? `Direct Wi-Fi HTTP Mode (${esp32HttpUrl})`
+              : dataSource === 'esp32'
               ? 'Real ESP32 Hardware Data via HiveMQ'
               : demoMode
               ? 'Simulated Demo Pattern Generator'
