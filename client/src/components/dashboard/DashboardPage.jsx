@@ -182,7 +182,7 @@ export default function DashboardPage() {
 
       {/* Emergency Alerts Banners */}
       <AnimatePresence>
-        {readings.flame === 1 && (
+        {(readings.flame === 1 || readings.flameDetected) && (
           <motion.div
             className="alert-banner danger"
             initial={{ height: 0, opacity: 0 }}
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             FIRE DETECTED — Flame infrared sensor triggered. Immediate action required.
           </motion.div>
         )}
-        {readings.gas > 300 && (
+        {(readings.gasAlarm || readings.gas > 300) && (
           <motion.div
             className="alert-banner danger"
             initial={{ height: 0, opacity: 0 }}
@@ -202,7 +202,7 @@ export default function DashboardPage() {
             style={{ marginTop: '8px' }}
           >
             <AlertTriangle size={16} style={{ marginRight: '8px' }} />
-            HAZARDOUS GAS DETECTED — MQ-135 reading is {readings.gas} ppm. Ventilate area immediately.
+            HAZARDOUS GAS DETECTED — {readings.gasAlarm ? 'Gas safety alarm active' : `MQ-135 reading is ${readings.gas} ppm`}. Ventilate area immediately.
           </motion.div>
         )}
       </AnimatePresence>
@@ -304,34 +304,34 @@ function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory, sensor
     },
     {
       label: 'Air Quality (MQ-135)',
-      value: sensorControls?.mq135 !== false ? readings.gas : 'Disabled',
-      unit: sensorControls?.mq135 !== false ? 'ppm' : '',
+      value: sensorControls?.mq135 !== false ? (readings.isRawGas ? readings.gasRaw : readings.gas) : 'Disabled',
+      unit: sensorControls?.mq135 !== false ? (readings.isRawGas ? 'ADC' : 'ppm') : '',
       icon: Wind,
       color: '#f59e0b',
-      chart: readingsHistory.map((r) => r.gas || 0),
+      chart: readingsHistory.map((r) => r.gas || r.gasRaw || 0),
       status:
         sensorControls?.mq135 === false
           ? 'disabled'
-          : readings.gas > 300
+          : (readings.gasAlarm || readings.gas > 300)
           ? 'danger'
           : readings.gas > 180
           ? 'warn'
           : 'ok',
-      subtitle: sensorControls?.mq135 !== false ? `Raw: ${readings.gasRaw || 0}` : 'Sensor switch OFF',
+      subtitle: sensorControls?.mq135 !== false ? (readings.gasAlarm ? '⚠️ Gas Alarm Triggered' : `Raw ADC: ${readings.gasRaw || 0}`) : 'Sensor switch OFF',
     },
     {
       label: 'Flame Sensor',
       value:
         sensorControls?.flame === false && !sensorControls?.safetyOverride
           ? 'Disabled'
-          : readings.flame
+          : (readings.flame || readings.flameDetected)
           ? 'FIRE'
           : 'Safe',
       unit: '',
       icon: Flame,
-      color: readings.flame ? '#ff3b30' : '#34c759',
-      status: readings.flame ? 'danger' : 'ok',
-      subtitle: `Raw: ${readings.flameRaw || 0}`,
+      color: (readings.flame || readings.flameDetected) ? '#ff3b30' : '#34c759',
+      status: (readings.flame || readings.flameDetected) ? 'danger' : 'ok',
+      subtitle: (readings.flame || readings.flameDetected) ? 'Infrared Flame Detected!' : `Raw ADC: ${readings.flameRaw || 0}`,
     },
     {
       label: 'Rain Sensor',
@@ -340,24 +340,46 @@ function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory, sensor
       icon: CloudRain,
       color: readings.rain ? '#0071e3' : '#34c759',
       status: sensorControls?.rain === false ? 'disabled' : readings.rain ? 'warn' : 'ok',
-      subtitle: `Raw: ${readings.rainRaw || 0}`,
+      subtitle: `Raw ADC: ${readings.rainRaw || 0}`,
     },
     {
       label: 'Sound Sensor',
-      value: sensorControls?.sound !== false ? readings.sound : 'Disabled',
-      unit: '',
+      value:
+        sensorControls?.sound !== false
+          ? typeof readings.sound === 'number' && readings.sound > 1
+            ? readings.sound
+            : readings.soundDetected
+            ? 'Detected'
+            : 'Quiet'
+          : 'Disabled',
+      unit: typeof readings.sound === 'number' && readings.sound > 1 ? '' : '',
       icon: Mic,
       color: '#bf5af2',
-      chart: readingsHistory.map((r) => r.sound || 0),
-      status: sensorControls?.sound === false ? 'disabled' : readings.sound > 700 ? 'warn' : 'ok',
+      chart: readingsHistory.map((r) => (typeof r.sound === 'number' ? r.sound : (r.soundDetected ? 1 : 0))),
+      status:
+        sensorControls?.sound === false
+          ? 'disabled'
+          : (readings.soundDetected || readings.sound > 700)
+          ? 'warn'
+          : 'ok',
+      subtitle: readings.soundDetected ? 'Acoustic Signal Active' : 'Normal / Ambient',
     },
     {
       label: 'PIR Motion Sensor',
-      value: sensorControls?.motion !== false ? (readings.motion ? 'Detected' : 'Clear') : 'Disabled',
+      value:
+        sensorControls?.motion !== false
+          ? (readings.motion || readings.motionDetected ? 'Detected' : 'Clear')
+          : 'Disabled',
       unit: '',
       icon: Radar,
-      color: readings.motion ? '#0071e3' : '#6e6e73',
-      status: sensorControls?.motion === false ? 'disabled' : readings.motion ? 'active' : 'ok',
+      color: (readings.motion || readings.motionDetected) ? '#0071e3' : '#6e6e73',
+      status:
+        sensorControls?.motion === false
+          ? 'disabled'
+          : (readings.motion || readings.motionDetected)
+          ? 'active'
+          : 'ok',
+      subtitle: (readings.motion || readings.motionDetected) ? 'Motion Detected' : 'Clear / No Movement',
     },
   ];
 

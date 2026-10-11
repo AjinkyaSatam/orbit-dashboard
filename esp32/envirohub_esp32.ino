@@ -62,6 +62,10 @@ int commMode = ACTIVE_COMM_MODE;
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
+// Direct Wi-Fi Access Point Configuration
+const char* AP_SSID       = "EnviroHub-ESP32";
+const char* AP_PASSWORD   = "Enviro123";
+
 const char* MQTT_BROKER   = "broker.hivemq.com";
 const int   MQTT_PORT     = 1883;
 
@@ -287,7 +291,45 @@ void handleHttpOptions() {
   server.send(204);
 }
 
-// GET /api/telemetry - Returns real-time sensor readings
+// GET /api/sensors - Direct contract: temperature, humidity, gasRaw, gasAlarm, rainRaw, flameDetected, soundDetected, motionDetected
+void handleHttpSensors() {
+  sendCorsHeaders();
+  StaticJsonDocument<512> doc;
+
+  // 1. Temperature & Humidity (DHT11)
+  if (enable_dht11) {
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    doc["temperature"] = isnan(t) ? 0.0 : round(t * 10.0) / 10.0;
+    doc["humidity"]    = isnan(h) ? 0.0 : round(h * 10.0) / 10.0;
+  } else {
+    doc["temperature"] = 0.0;
+    doc["humidity"]    = 0.0;
+  }
+
+  // 2. Gas (MQ-135)
+  int gasRaw = analogRead(PIN_MQ135);
+  doc["gasRaw"]   = gasRaw;
+  doc["gasAlarm"] = (gasRaw > 2800);
+
+  // 3. Rain Sensor
+  doc["rainRaw"]  = analogRead(PIN_RAIN_A);
+
+  // 4. Flame Sensor (Active LOW on optical IR sensor)
+  doc["flameDetected"] = (digitalRead(PIN_FLAME_D) == LOW);
+
+  // 5. Sound Sensor
+  doc["soundDetected"] = (analogRead(PIN_SOUND_A) > 700);
+
+  // 6. PIR Motion Sensor (Active HIGH)
+  doc["motionDetected"] = (digitalRead(PIN_PIR) == HIGH);
+
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
+// GET /api/telemetry - Returns real-time sensor readings (backward compatible)
 void handleHttpTelemetry() {
   sendCorsHeaders();
   StaticJsonDocument<512> doc;
@@ -304,7 +346,7 @@ void handleHttpStatus() {
   StaticJsonDocument<512> doc;
   doc["status"] = "online";
   doc["mode"]   = (commMode == MODE_HTTP) ? "http" : "mqtt";
-  doc["ip"]     = WiFi.localIP().toString();
+  doc["ip"]     = (WiFi.getMode() & WIFI_AP) ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
   doc["mac"]    = WiFi.macAddress();
   doc["rssi"]   = WiFi.RSSI();
   doc["uptime"] = (unsigned long)(millis() / 1000);
@@ -325,31 +367,23 @@ void handleHttpStatus() {
   server.send(200, "application/json", response);
 }
 
-// POST /api/control - Set single sensor or actuator state
+// GET & POST /api/control - Set single sensor or actuator state (?name=NAME&enabled=true)
 void handleHttpControl() {
   sendCorsHeaders();
 
   String sensor = "";
   bool turnOn = false;
 
-  // 1. Check JSON body
-  if (server.hasArg("plain")) {
-    StaticJsonDocument<256> body;
-    DeserializationError err = deserializeJson(body, server.arg("plain"));
-    if (!err) {
-      if (body.containsKey("sensor")) {
-        sensor = body["sensor"].as<String>();
-      }
-      if (body.containsKey("state")) {
-        String st = body["state"].as<String>();
-        turnOn = (st.equalsIgnoreCase("ON") || st == "1" || body["state"].as<bool>() == true);
-      } else if (body.containsKey("enabled")) {
-        turnOn = body["enabled"].as<bool>();
-      }
+  // 1. Check Query parameter: ?name=NAME&enabled=true/false
+  if (server.hasArg("name")) {
+    sensor = server.arg("name");
+    if (server.hasArg("enabled")) {
+      String en = server.arg("enabled");
+      turnOn = (en.equalsIgnoreCase("true") || en == "1" || en.equalsIgnoreCase("ON"));
     }
   }
 
-  // 2. Fallback to query arguments / form-urlencoded: ?sensor=buzzer&state=ON
+  // 2. Check Query parameter: ?sensor=NAME&state=ON/OFF
   if (sensor == "" && server.hasArg("sensor")) {
     sensor = server.arg("sensor");
     if (server.hasArg("state")) {
@@ -358,19 +392,39 @@ void handleHttpControl() {
     }
   }
 
+  // 3. Check JSON body: {"name":"buzzer","enabled":true} or {"sensor":"buzzer","state":"ON"}
+  if (sensor == "" && server.hasArg("plain")) {
+    StaticJsonDocument<256> body;
+    DeserializationError err = deserializeJson(body, server.arg("plain"));
+    if (!err) {
+      if (body.containsKey("name")) {
+        sensor = body["name"].as<String>();
+      } else if (body.containsKey("sensor")) {
+        sensor = body["sensor"].as<String>();
+      }
+
+      if (body.containsKey("enabled")) {
+        turnOn = body["enabled"].as<bool>();
+      } else if (body.containsKey("state")) {
+        String st = body["state"].as<String>();
+        turnOn = (st.equalsIgnoreCase("ON") || st == "1" || body["state"].as<bool>() == true);
+      }
+    }
+  }
+
   if (sensor != "") {
     applyControl(sensor, turnOn);
 
     StaticJsonDocument<128> reply;
     reply["success"] = true;
-    reply["sensor"]  = sensor;
-    reply["state"]   = turnOn ? "ON" : "OFF";
+    reply["name"]    = sensor;
+    reply["enabled"] = turnOn;
 
     String jsonReply;
     serializeJson(reply, jsonReply);
     server.send(200, "application/json", jsonReply);
   } else {
-    server.send(400, "application/json", "{\"error\":\"Missing sensor or state parameter\"}");
+    server.send(400, "application/json", "{\"error\":\"Missing name or enabled parameter\"}");
   }
 }
 
@@ -437,6 +491,7 @@ void setupWebServer() {
   // Setup endpoints
   server.on("/", HTTP_GET, handleHttpStatus);
   server.on("/api/status", HTTP_GET, handleHttpStatus);
+  server.on("/api/sensors", HTTP_GET, handleHttpSensors);
   server.on("/api/telemetry", HTTP_GET, handleHttpTelemetry);
   server.on("/telemetry", HTTP_GET, handleHttpTelemetry);
   
@@ -450,6 +505,7 @@ void setupWebServer() {
   // Handle CORS preflight options requests
   server.on("/", HTTP_OPTIONS, handleHttpOptions);
   server.on("/api/status", HTTP_OPTIONS, handleHttpOptions);
+  server.on("/api/sensors", HTTP_OPTIONS, handleHttpOptions);
   server.on("/api/telemetry", HTTP_OPTIONS, handleHttpOptions);
   server.on("/api/control", HTTP_OPTIONS, handleHttpOptions);
   server.on("/api/control/sync", HTTP_OPTIONS, handleHttpOptions);
@@ -639,6 +695,17 @@ void publishTelemetryMqtt() {
 // 11. SETUP & MAIN LOOP
 // ══════════════════════════════════════════════════════════════════════════════
 void setupWiFi() {
+  if (commMode == MODE_HTTP) {
+    Serial.println("\n[WIFI] Initializing Direct Wi-Fi Access Point Mode...");
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+    Serial.printf("Access Point Started! SSID: %s | Pass: %s\n", AP_SSID, AP_PASSWORD);
+    Serial.printf("AP IP Address: %s\n", WiFi.softAPIP().toString().c_str());
+    Serial.printf("Direct Sensor API: http://%s/api/sensors\n", WiFi.softAPIP().toString().c_str());
+    return;
+  }
+
+  // Otherwise Station mode for Cloud MQTT
   Serial.print("Connecting to WiFi: ");
   Serial.println(WIFI_SSID);
   WiFi.mode(WIFI_STA);
@@ -657,7 +724,10 @@ void setupWiFi() {
     Serial.println(WiFi.localIP());
     Serial.printf("Direct HTTP URL: http://%s/\n", WiFi.localIP().toString().c_str());
   } else {
-    Serial.println("\nWiFi Connection failed. Running in offline loop...");
+    Serial.println("\nWiFi Station failed. Starting Fallback Access Point (EnviroHub-ESP32)...");
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+    Serial.printf("AP IP Address: %s\n", WiFi.softAPIP().toString().c_str());
   }
 }
 

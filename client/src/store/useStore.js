@@ -38,7 +38,9 @@ const useStore = create((set, get) => ({
   setCommMode: (mode) => {
     try {
       localStorage.setItem('envirohub-comm-mode', mode);
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ commMode: mode });
   },
 
@@ -52,7 +54,9 @@ const useStore = create((set, get) => ({
     clean = clean.replace(/\/+$/, '');
     try {
       localStorage.setItem('envirohub-esp32-http-url', clean);
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ esp32HttpUrl: clean });
   },
   httpConnected: false,
@@ -82,14 +86,18 @@ const useStore = create((set, get) => ({
   setMqttBrokerUrl: (url) => {
     try {
       localStorage.setItem('envirohub-mqtt-broker', url);
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ mqttBrokerUrl: url });
   },
   mqttTopicPrefix: localStorage.getItem('envirohub-topic-prefix') || 'iot-hub',
   setMqttTopicPrefix: (p) => {
     try {
       localStorage.setItem('envirohub-topic-prefix', p);
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ mqttTopicPrefix: p });
   },
 
@@ -114,13 +122,17 @@ const useStore = create((set, get) => ({
     const next = { ...get().sensorControls, [key]: val };
     try {
       localStorage.setItem('envirohub-sensor-controls', JSON.stringify(next));
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ sensorControls: next });
   },
   setAllSensorControls: (newControls) => {
     try {
       localStorage.setItem('envirohub-sensor-controls', JSON.stringify(newControls));
-    } catch {}
+    } catch (_e) {
+      /* ignore storage error */
+    }
     set({ sensorControls: newControls });
   },
 

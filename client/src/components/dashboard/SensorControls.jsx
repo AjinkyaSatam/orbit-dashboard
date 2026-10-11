@@ -50,28 +50,20 @@ export default function SensorControls({ publishControl, syncAllControls }) {
   const [prefixInput, setPrefixInput] = useState(mqttTopicPrefix);
 
   const handleToggle = (key) => {
+    if (key === 'safetyOverride') {
+      addToast('Safety Override is locked ARMED: Critical fire and toxic gas alerts cannot be disarmed.', 'warn');
+      return;
+    }
     const nextVal = !sensorControls[key];
     if (publishControl) {
       publishControl(key, nextVal);
     } else {
       setSensorControl(key, nextVal);
     }
-    const dest = commMode === 'http'
-      ? `HTTP POST ${esp32HttpUrl}/api/control`
-      : `MQTT ${mqttTopicPrefix}/control/${TOPIC_MAP[key] || key}`;
-    addToast(
-      `${key.toUpperCase()} set to ${nextVal ? 'ON' : 'OFF'} (${dest})`,
-      'info'
-    );
   };
 
   const handleSafetyToggle = () => {
-    const nextVal = !sensorControls.safetyOverride;
-    setSensorControl('safetyOverride', nextVal);
-    addToast(
-      `Safety Override ${nextVal ? 'ACTIVATED: Gas & Flame alerts armed regardless of sensor switches' : 'DEACTIVATED'}`,
-      nextVal ? 'success' : 'warn'
-    );
+    addToast('Safety Override is locked ARMED: Critical fire and toxic gas alerts are permanently active for safety.', 'info');
   };
 
   const handleSaveConfig = (e) => {
