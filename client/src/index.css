@@ -5,21 +5,22 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* ---------- TOKENS ---------- */
+/* ---------- TOKENS (Dark Mode Default) ---------- */
 :root {
-  /* Light mode (default) */
-  --bg: #fbfbfd;
-  --surface: #f5f5f7;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --danger: #ff3b30;
-  --ok: #34c759;
-  --warn: #ff9f0a;
+  color-scheme: dark;
 
-  --nav-bg: rgba(251, 251, 253, 0.72);
-  --nav-border: rgba(0, 0, 0, 0.08);
+  --bg: #000000;
+  --surface: #12131a;
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --accent: #2997ff;
+  --accent-hover: #3da5ff;
+  --danger: #ff453a;
+  --ok: #30d158;
+  --warn: #ffd60a;
+
+  --nav-bg: rgba(0, 0, 0, 0.75);
+  --nav-border: rgba(255, 255, 255, 0.08);
 
   --radius-card: 28px;
   --radius-pill: 980px;
@@ -30,21 +31,6 @@
   --section-padding: 120px;
   --max-width: 1080px;
   --max-width-wide: 1440px;
-}
-
-[data-theme="dark"] {
-  --bg: #000000;
-  --surface: #1d1d1f;
-  --text: #f5f5f7;
-  --muted: #a1a1a6;
-  --accent: #2997ff;
-  --accent-hover: #3da5ff;
-  --danger: #ff453a;
-  --ok: #30d158;
-  --warn: #ffd60a;
-
-  --nav-bg: rgba(0, 0, 0, 0.72);
-  --nav-border: rgba(255, 255, 255, 0.08);
 }
 
 /* ---------- RESET ---------- */
@@ -364,6 +350,7 @@ ul, ol {
 @media (max-width: 768px) {
   .navbar-toggle {
     display: flex;
+    color: var(--text);
   }
 
   .navbar-links {
@@ -372,22 +359,30 @@ ul, ol {
     left: 0;
     right: 0;
     bottom: 0;
+    height: calc(100vh - var(--nav-height));
     background: var(--bg);
     flex-direction: column;
     justify-content: flex-start;
     padding: 40px 24px;
     gap: 24px;
-    transform: translateY(-110%);
-    transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-16px);
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), visibility 0.3s ease;
     z-index: 9998;
+    overflow-y: auto;
   }
 
   .navbar-links.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
     transform: translateY(0);
   }
 
   .navbar-link {
-    font-size: 17px;
+    font-size: 19px;
   }
 }
 

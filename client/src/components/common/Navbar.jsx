@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import Logo from '../brand/Logo';
 import useStore from '../../store/useStore';
 import './Navbar.css';
 
 export default function Navbar() {
-  const { theme, toggleTheme, user, logout } = useStore();
+  const { user, logout } = useStore();
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [lastY, setLastY] = useState(0);
@@ -26,17 +27,19 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  useEffect(() => {
+  const [prevPath, setPrevPath] = useState(location.pathname);
+  if (prevPath !== location.pathname) {
+    setPrevPath(location.pathname);
     setMenuOpen(false);
-  }, [location]);
+  }
 
   const isLanding = location.pathname === '/';
 
   return (
     <nav className={`navbar ${hidden ? 'hidden' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="navbar-inner">
-        <Link to="/" className="navbar-brand" aria-label="Sentinel Home">
-          Sentinel
+        <Link to="/" className="navbar-brand" aria-label="Home">
+          <Logo size={22} variant="lockup" />
         </Link>
 
         <button
@@ -90,13 +93,6 @@ export default function Navbar() {
               Sign in
             </Link>
           )}
-          <button
-            onClick={toggleTheme}
-            className="navbar-theme-btn"
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? <Moon size={14} strokeWidth={1.5} /> : <Sun size={14} strokeWidth={1.5} />}
-          </button>
         </div>
       </div>
     </nav>

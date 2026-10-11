@@ -1,0 +1,127 @@
+[
+  {
+    "file": "public/images/logo/logo-mark.svg",
+    "kb": 0.7,
+    "usage": "Full-colour mark (docs, README)"
+  },
+  {
+    "file": "public/images/logo/logo-mark-mono.svg",
+    "kb": 0.5,
+    "usage": "Monochrome mark, inherits currentColor"
+  },
+  {
+    "file": "public/images/logo/logo-lockup-light.svg",
+    "kb": 5,
+    "usage": "Lockup for light backgrounds"
+  },
+  {
+    "file": "public/images/logo/logo-lockup-dark.svg",
+    "kb": 5,
+    "usage": "Lockup for dark backgrounds"
+  },
+  {
+    "file": "public/favicon.svg",
+    "kb": 1.3,
+    "usage": "<link rel=icon type=image/svg+xml>"
+  },
+  {
+    "file": "public/favicon-16.png",
+    "kb": 0.8,
+    "usage": "Legacy 16px favicon"
+  },
+  {
+    "file": "public/favicon-32.png",
+    "kb": 2,
+    "usage": "Legacy 32px favicon"
+  },
+  {
+    "file": "public/apple-touch-icon.png",
+    "kb": 17.6,
+    "usage": "iOS home screen"
+  },
+  {
+    "file": "public/icon-192.png",
+    "kb": 20.5,
+    "usage": "Web manifest"
+  },
+  {
+    "file": "public/icon-512.png",
+    "kb": 62.5,
+    "usage": "Web manifest"
+  },
+  {
+    "file": "public/icon-maskable-512.png",
+    "kb": 59,
+    "usage": "Web manifest (maskable)"
+  },
+  {
+    "file": "public/site.webmanifest",
+    "kb": 0.5,
+    "usage": "PWA manifest"
+  },
+  {
+    "file": "public/images/hero-bg.webp",
+    "kb": 13.7,
+    "usage": "Hero background (desktop, preloaded)"
+  },
+  {
+    "file": "public/images/hero-bg-1280.webp",
+    "kb": 4.8,
+    "usage": "Hero background (mobile/tablet srcset)"
+  },
+  {
+    "file": "public/images/grain.png",
+    "kb": 118.6,
+    "usage": "Tileable film grain overlay (CSS, 5% opacity)"
+  },
+  {
+    "file": "public/images/anywhere-map.svg",
+    "kb": 58.4,
+    "usage": "Dot-matrix world map (vector source)"
+  },
+  {
+    "file": "public/images/anywhere-map.webp",
+    "kb": 221.6,
+    "usage": "\"Anywhere\" section map (transparent)"
+  },
+  {
+    "file": "public/images/divider.webp",
+    "kb": 7.3,
+    "usage": "Aurora divider between dark sections"
+  },
+  {
+    "file": "public/images/divider-animated.svg",
+    "kb": 1.3,
+    "usage": "Optional animated aurora (stops under reduced motion)"
+  },
+  {
+    "file": "public/images/dashboard-backdrop.webp",
+    "kb": 9.4,
+    "usage": "Live data section + dark-theme dashboard"
+  },
+  {
+    "file": "public/images/cta-bg.webp",
+    "kb": 10.1,
+    "usage": "Closing call-to-action section"
+  },
+  {
+    "file": "public/images/art/usecase-outdoor.webp",
+    "kb": 18.7,
+    "usage": "Use case tile: outdoor / rain (procedural)"
+  },
+  {
+    "file": "public/images/art/usecase-home.webp",
+    "kb": 13.6,
+    "usage": "Use case tile: home (pattern art)"
+  },
+  {
+    "file": "public/images/art/usecase-storage.webp",
+    "kb": 13.1,
+    "usage": "Use case tile: storage / workshop (pattern art)"
+  },
+  {
+    "file": "public/og-image.png",
+    "kb": 182.4,
+    "usage": "og:image / twitter:image (1200×630)"
+  }
+]

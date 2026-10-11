@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
+import Logo from '../components/brand/Logo';
+import { siteConfig } from '../content/siteConfig';
 import useStore from '../store/useStore';
 import axios from 'axios';
 
@@ -50,9 +52,12 @@ export default function RegisterPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
       >
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <Logo size={42} variant="color" />
+        </div>
         <h1 className="headline-small" style={{ marginBottom: '8px', textAlign: 'center' }}>Create account</h1>
         <p className="body-default" style={{ textAlign: 'center', marginBottom: '32px' }}>
-          Start monitoring with Sentinel
+          Start monitoring with {siteConfig.name}
         </p>
 
         {error && <div className="auth-error">{error}</div>}

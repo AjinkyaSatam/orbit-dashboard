@@ -1,33 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Thermometer, Droplets, Eye, Flame, CloudRain, Mic,
-  Bell, Volume2, VolumeX, Activity, Wifi, WifiOff,
-  ChevronRight, AlertTriangle, Check, ToggleLeft, ToggleRight
+  Thermometer,
+  Droplets,
+  Radar,
+  Flame,
+  CloudRain,
+  Mic,
+  Wind,
+  Bell,
+  Volume2,
+  VolumeX,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  Check,
+  ToggleLeft,
+  ToggleRight,
+  Radio,
+  Sliders,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import useStore from '../../store/useStore';
 import { useDemoMode } from '../../hooks/useDemoMode';
+import useMqtt from '../../hooks/useMqtt';
+import SensorControls from './SensorControls';
 import './Dashboard.css';
 
-const TABS = ['Overview', 'Charts', 'Alerts'];
+const TABS = ['Overview', 'Sensor Controls', 'Charts', 'Alerts'];
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('Overview');
   const {
-    readings, readingsHistory, deviceOnline, lastSeen,
-    mqttConnected, demoMode, toggleDemoMode,
-    alerts, ackAlert, addToast
+    readings,
+    readingsHistory,
+    deviceOnline,
+    lastSeen,
+    mqttConnected,
+    mqttStatus,
+    demoMode,
+    toggleDemoMode,
+    dataSource,
+    sensorControls,
+    alerts,
+    ackAlert,
+    addToast,
   } = useStore();
-  const [buzzerOn, setBuzzerOn] = useState(false);
 
-  // Start demo mode
+  // Initialize MQTT connection to broker.hivemq.com & sync
+  const { publishControl, syncAllControls } = useMqtt();
+
+  // Start simulated demo mode (if enabled and no real ESP32 streaming)
   useDemoMode();
 
-  const handleBuzzer = () => {
-    setBuzzerOn(!buzzerOn);
-    addToast(buzzerOn ? 'Buzzer turned off' : 'Buzzer activated', 'info');
-    // In production: publish to iot/safetybox/TEAMID/cmd
+  const handleBuzzerToggle = () => {
+    const nextState = !sensorControls.buzzer;
+    publishControl('buzzer', nextState);
+    addToast(
+      nextState ? 'Buzzer siren activated (Published ON to iot-hub/control/buzzer)' : 'Buzzer siren deactivated (Published OFF)',
+      nextState ? 'warn' : 'info'
+    );
   };
 
   return (
@@ -35,33 +67,73 @@ export default function DashboardPage() {
       <div className="dashboard-header">
         <div>
           <h1 className="headline-small" style={{ marginBottom: '4px' }}>Dashboard</h1>
-          <p className="body-default">
-            {demoMode ? 'Demo Mode — Simulated data' : 'Live sensor readings'}
+          <p className="body-default" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Real vs Demo Data Source Indicator */}
+            {dataSource === 'esp32' ? (
+              <span className="data-source-badge real">
+                <Radio size={13} className="icon-pulse" />
+                Live ESP32 Hardware Data (Real Device)
+              </span>
+            ) : demoMode ? (
+              <span className="data-source-badge demo">
+                <ToggleLeft size={13} />
+                Simulated Demo Mode (Not Real Device)
+              </span>
+            ) : (
+              <span className="data-source-badge offline">
+                <WifiOff size={13} />
+                Hardware Offline — Waiting for ESP32
+              </span>
+            )}
           </p>
         </div>
+
         <div className="dashboard-controls">
+          {/* MQTT Connection Status */}
           <div className="connection-status">
             {mqttConnected ? (
-              <span className="status-badge online"><Wifi size={12} /> Connected</span>
+              <span className="status-badge online" title="Connected to HiveMQ WebSocket">
+                <Wifi size={12} /> HiveMQ Connected
+              </span>
+            ) : mqttStatus === 'connecting' ? (
+              <span className="status-badge offline" style={{ color: '#f59e0b' }}>
+                <Wifi size={12} className="icon-pulse" /> Connecting...
+              </span>
             ) : (
-              <span className="status-badge offline"><WifiOff size={12} /> Disconnected</span>
+              <span className="status-badge offline" title="Disconnected from broker">
+                <WifiOff size={12} /> Disconnected
+              </span>
             )}
           </div>
+
+          {/* Demo Toggle */}
           <button
             onClick={toggleDemoMode}
             className="demo-toggle"
             aria-label={`${demoMode ? 'Disable' : 'Enable'} demo mode`}
+            title={demoMode ? 'Switch to Live MQTT Mode' : 'Switch to Demo Simulated Mode'}
           >
             {demoMode ? <ToggleRight size={20} color="var(--ok)" /> : <ToggleLeft size={20} />}
-            <span className="caption">Demo</span>
+            <span className="caption">Demo Mode</span>
           </button>
-          <button onClick={handleBuzzer} className="buzzer-btn" aria-label="Toggle buzzer">
-            {buzzerOn ? <Volume2 size={18} color="var(--danger)" /> : <VolumeX size={18} />}
+
+          {/* Buzzer Quick Button */}
+          <button
+            onClick={handleBuzzerToggle}
+            className={`buzzer-btn ${sensorControls.buzzer ? 'danger-pulse' : ''}`}
+            aria-label="Toggle buzzer alarm"
+            title={sensorControls.buzzer ? 'Buzzer is ON — Click to silence' : 'Click to trigger buzzer alert'}
+          >
+            {sensorControls.buzzer ? (
+              <Volume2 size={18} color="var(--danger)" />
+            ) : (
+              <VolumeX size={18} />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Alert Banner */}
+      {/* Emergency Alerts Banners */}
       <AnimatePresence>
         {readings.flame === 1 && (
           <motion.div
@@ -71,12 +143,24 @@ export default function DashboardPage() {
             exit={{ height: 0, opacity: 0 }}
           >
             <AlertTriangle size={16} style={{ marginRight: '8px' }} />
-            🔥 FIRE DETECTED — Flame sensor triggered. Check immediately.
+            FIRE DETECTED — Flame infrared sensor triggered. Immediate action required.
+          </motion.div>
+        )}
+        {readings.gas > 300 && (
+          <motion.div
+            className="alert-banner danger"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{ marginTop: '8px' }}
+          >
+            <AlertTriangle size={16} style={{ marginRight: '8px' }} />
+            HAZARDOUS GAS DETECTED — MQ-135 reading is {readings.gas} ppm. Ventilate area immediately.
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Tabs */}
+      {/* Navigation Tabs */}
       <div className="tab-bar">
         {TABS.map((tab) => (
           <button
@@ -84,6 +168,7 @@ export default function DashboardPage() {
             className={`tab-item ${activeTab === tab ? 'active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
+            {tab === 'Sensor Controls' && <Sliders size={13} style={{ marginRight: '6px' }} />}
             {tab}
           </button>
         ))}
@@ -91,31 +176,49 @@ export default function DashboardPage() {
 
       {/* Tab Content */}
       {activeTab === 'Overview' && (
-        <OverviewTab readings={readings} deviceOnline={deviceOnline} lastSeen={lastSeen} readingsHistory={readingsHistory} />
+        <OverviewTab
+          readings={readings}
+          deviceOnline={deviceOnline}
+          lastSeen={lastSeen}
+          readingsHistory={readingsHistory}
+          sensorControls={sensorControls}
+        />
       )}
+
+      {activeTab === 'Sensor Controls' && (
+        <SensorControls publishControl={publishControl} syncAllControls={syncAllControls} />
+      )}
+
       {activeTab === 'Charts' && (
         <ChartsTab readingsHistory={readingsHistory} />
       )}
+
       {activeTab === 'Alerts' && (
         <AlertsTab alerts={alerts} ackAlert={ackAlert} />
       )}
 
-      {/* Device info */}
+      {/* Device Info Footer */}
       <div className="device-info">
         <div className="device-info-row">
-          <span className="caption">Device Status</span>
+          <span className="caption">Hardware Device Status</span>
           <span className="caption" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className={`status-dot ${deviceOnline ? 'online' : 'offline'}`}></span>
-            {deviceOnline ? 'Online' : 'Offline'}
+            {deviceOnline ? 'Online (ESP32 Connected)' : 'Offline / Standby'}
           </span>
         </div>
         <div className="device-info-row">
-          <span className="caption">Last Seen</span>
+          <span className="caption">Last Telemetry Timestamp</span>
           <span className="caption">{lastSeen ? new Date(lastSeen).toLocaleString() : '—'}</span>
         </div>
         <div className="device-info-row">
-          <span className="caption">Mode</span>
-          <span className="caption">{demoMode ? 'Demo (Simulated)' : 'Live (MQTT)'}</span>
+          <span className="caption">Active Operating Mode</span>
+          <span className="caption">
+            {dataSource === 'esp32'
+              ? 'Real ESP32 Hardware Data via HiveMQ'
+              : demoMode
+              ? 'Simulated Demo Pattern Generator'
+              : 'Waiting for Hardware Connection'}
+          </span>
         </div>
       </div>
     </div>
@@ -123,60 +226,89 @@ export default function DashboardPage() {
 }
 
 /* ─── Overview Tab ─── */
-function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory }) {
+function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory, sensorControls }) {
   const cards = [
     {
-      label: 'Temperature',
-      value: readings.temp,
-      unit: '°C',
+      label: 'Temperature (DHT11)',
+      value: sensorControls?.dht11 !== false ? readings.temp : 'Disabled',
+      unit: sensorControls?.dht11 !== false ? '°C' : '',
       icon: Thermometer,
       color: '#ff9f0a',
-      chart: readingsHistory.map(r => r.temp),
-      status: readings.temp > 45 ? 'danger' : readings.temp > 35 ? 'warn' : 'ok',
+      chart: readingsHistory.map((r) => r.temp || 0),
+      status:
+        sensorControls?.dht11 === false
+          ? 'disabled'
+          : readings.temp > 45
+          ? 'danger'
+          : readings.temp > 35
+          ? 'warn'
+          : 'ok',
     },
     {
-      label: 'Humidity',
-      value: readings.hum,
-      unit: '%',
+      label: 'Humidity (DHT11)',
+      value: sensorControls?.dht11 !== false ? readings.hum : 'Disabled',
+      unit: sensorControls?.dht11 !== false ? '%' : '',
       icon: Droplets,
       color: '#0071e3',
-      chart: readingsHistory.map(r => r.hum),
-      status: readings.hum > 85 ? 'warn' : 'ok',
+      chart: readingsHistory.map((r) => r.hum || 0),
+      status: sensorControls?.dht11 === false ? 'disabled' : readings.hum > 85 ? 'warn' : 'ok',
     },
     {
-      label: 'Flame',
-      value: readings.flame ? 'FIRE' : 'Safe',
+      label: 'Air Quality (MQ-135)',
+      value: sensorControls?.mq135 !== false ? readings.gas : 'Disabled',
+      unit: sensorControls?.mq135 !== false ? 'ppm' : '',
+      icon: Wind,
+      color: '#f59e0b',
+      chart: readingsHistory.map((r) => r.gas || 0),
+      status:
+        sensorControls?.mq135 === false
+          ? 'disabled'
+          : readings.gas > 300
+          ? 'danger'
+          : readings.gas > 180
+          ? 'warn'
+          : 'ok',
+      subtitle: sensorControls?.mq135 !== false ? `Raw: ${readings.gasRaw || 0}` : 'Sensor switch OFF',
+    },
+    {
+      label: 'Flame Sensor',
+      value:
+        sensorControls?.flame === false && !sensorControls?.safetyOverride
+          ? 'Disabled'
+          : readings.flame
+          ? 'FIRE'
+          : 'Safe',
       unit: '',
       icon: Flame,
       color: readings.flame ? '#ff3b30' : '#34c759',
       status: readings.flame ? 'danger' : 'ok',
-      subtitle: `Raw: ${readings.flameRaw}`,
+      subtitle: `Raw: ${readings.flameRaw || 0}`,
     },
     {
-      label: 'Rain',
-      value: readings.rain ? 'Wet' : 'Dry',
+      label: 'Rain Sensor',
+      value: sensorControls?.rain !== false ? (readings.rain ? 'Wet' : 'Dry') : 'Disabled',
       unit: '',
       icon: CloudRain,
       color: readings.rain ? '#0071e3' : '#34c759',
-      status: readings.rain ? 'warn' : 'ok',
-      subtitle: `Raw: ${readings.rainRaw}`,
+      status: sensorControls?.rain === false ? 'disabled' : readings.rain ? 'warn' : 'ok',
+      subtitle: `Raw: ${readings.rainRaw || 0}`,
     },
     {
-      label: 'Sound',
-      value: readings.sound,
+      label: 'Sound Sensor',
+      value: sensorControls?.sound !== false ? readings.sound : 'Disabled',
       unit: '',
       icon: Mic,
       color: '#bf5af2',
-      chart: readingsHistory.map(r => r.sound),
-      status: readings.sound > 700 ? 'warn' : 'ok',
+      chart: readingsHistory.map((r) => r.sound || 0),
+      status: sensorControls?.sound === false ? 'disabled' : readings.sound > 700 ? 'warn' : 'ok',
     },
     {
-      label: 'Motion',
-      value: readings.motion ? 'Detected' : 'Clear',
+      label: 'PIR Motion Sensor',
+      value: sensorControls?.motion !== false ? (readings.motion ? 'Detected' : 'Clear') : 'Disabled',
       unit: '',
-      icon: Eye,
+      icon: Radar,
       color: readings.motion ? '#0071e3' : '#6e6e73',
-      status: readings.motion ? 'active' : 'ok',
+      status: sensorControls?.motion === false ? 'disabled' : readings.motion ? 'active' : 'ok',
     },
   ];
 
@@ -185,7 +317,9 @@ function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory }) {
       {cards.map((card) => (
         <motion.div
           key={card.label}
-          className={`data-card ${card.status === 'danger' ? 'danger-pulse' : ''}`}
+          className={`data-card ${card.status === 'danger' ? 'danger-pulse' : ''} ${
+            card.status === 'disabled' ? 'disabled-card' : ''
+          }`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -194,7 +328,13 @@ function OverviewTab({ readings, deviceOnline, lastSeen, readingsHistory }) {
             <span className="data-label">{card.label}</span>
             <card.icon size={20} strokeWidth={1.5} style={{ color: card.color }} />
           </div>
-          <div className="data-value" style={{ color: card.status === 'danger' ? 'var(--danger)' : undefined }}>
+          <div
+            className="data-value"
+            style={{
+              color: card.status === 'danger' ? 'var(--danger)' : card.status === 'disabled' ? 'var(--muted)' : undefined,
+              fontSize: card.status === 'disabled' ? '22px' : undefined,
+            }}
+          >
             {card.value}
             {card.unit && <span className="data-unit">{card.unit}</span>}
           </div>
@@ -216,11 +356,13 @@ function MiniSparkline({ data, color }) {
   const range = max - min || 1;
   const h = 40;
   const w = 200;
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * h;
-    return `${x},${y}`;
-  }).join(' ');
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((v - min) / range) * h;
+      return `${x},${y}`;
+    })
+    .join(' ');
 
   return (
     <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ marginTop: 8, opacity: 0.6 }}>
@@ -230,16 +372,21 @@ function MiniSparkline({ data, color }) {
 }
 
 /* ─── Charts Tab ─── */
-function ChartsTab({ readingsHistory }) {
-  const chartData = readingsHistory.map((r, i) => ({
-    ...r,
-    index: i,
-    time: new Date(r.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-  }));
+function ChartsTab({ readingsHistory = [] }) {
+  const chartData = (readingsHistory || []).map((r, i) => {
+    const raw = r.ts || 0;
+    const ms = raw > 1e11 ? raw : raw * 1000;
+    return {
+      ...r,
+      index: i,
+      time: ms ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--',
+    };
+  });
 
   const charts = [
     { key: 'temp', name: 'Temperature (°C)', color: '#ff9f0a' },
     { key: 'hum', name: 'Humidity (%)', color: '#0071e3' },
+    { key: 'gas', name: 'MQ-135 Gas / Air Quality (ppm)', color: '#f59e0b' },
     { key: 'sound', name: 'Sound Level', color: '#bf5af2' },
   ];
 

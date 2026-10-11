@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,20 +14,29 @@
     <meta property="og:title" content="Sentinel — Smart Environmental Safety Hub" />
     <meta property="og:description" content="Five senses. One box. Anywhere. Real-time IoT monitoring with ESP32." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://sentinel-iot.vercel.app" />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content="%SITE_URL%" />
+    <meta property="og:image" content="%OG_IMAGE_URL%" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Sentinel — Smart Environmental Safety Hub" />
     <meta name="twitter:description" content="Five senses. One box. Anywhere." />
+    <meta name="twitter:image" content="%OG_IMAGE_URL%" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/sentinel-icon.svg" />
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Hero Asset Preload -->
+    <link rel="preload" as="image" href="/images/hero-bg.webp" type="image/webp" fetchpriority="high" />
 
     <!-- Theme Color -->
-    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#070b1a" />
   </head>
   <body>
     <div id="root"></div>

@@ -1,0 +1,34 @@
+{
+  "name": "orbit-server",
+  "version": "1.0.0",
+  "description": "Backend for Orbit Dashboard",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "cross-env MONGO_URI=mongodb://localhost:27017/test JWT_SECRET=testsecret CLIENT_ORIGIN=http://localhost:5173 ADMIN_EMAIL=test@test.com ADMIN_PASSWORD=password MQTT_URL=mqtts://localhost MQTT_USERNAME=test MQTT_PASSWORD=test MQTT_VIEWER_PASSWORD=test TEAM_ID=TEAM01 vitest run",
+    "test:watch": "vitest",
+    "simulate": "node scripts/simulate.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.1",
+    "mqtt": "^5.16.0",
+    "nodemailer": "^10.1.0",
+    "pino": "^10.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.3"
+  }
+}

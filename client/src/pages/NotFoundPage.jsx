@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Logo from '../components/brand/Logo';
 
 export default function NotFoundPage() {
   return (
@@ -16,14 +17,18 @@ export default function NotFoundPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       >
+        <div style={{ marginBottom: '24px' }}>
+          <Logo size={48} variant="color" />
+        </div>
         <h1 style={{
           fontSize: 'clamp(80px, 15vw, 160px)',
           fontWeight: 600,
           letterSpacing: '-0.03em',
           lineHeight: 1,
           color: 'var(--text)',
-          opacity: 0.1,
+          opacity: 0.12,
         }}>
           404
         </h1>

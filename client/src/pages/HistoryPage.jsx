@@ -8,6 +8,7 @@ import './History.css';
 const SENSORS = [
   { key: 'temp', label: 'Temperature', color: '#ff9f0a', unit: '°C' },
   { key: 'hum', label: 'Humidity', color: '#0071e3', unit: '%' },
+  { key: 'gas', label: 'MQ-135 Gas', color: '#f59e0b', unit: 'ppm' },
   { key: 'sound', label: 'Sound', color: '#bf5af2', unit: '' },
   { key: 'flameRaw', label: 'Flame (Raw)', color: '#ff3b30', unit: '' },
   { key: 'rainRaw', label: 'Rain (Raw)', color: '#30d158', unit: '' },
@@ -40,9 +41,9 @@ export default function HistoryPage() {
   const totalPages = Math.max(1, Math.ceil(readingsHistory.length / PAGE_SIZE));
 
   const exportCSV = () => {
-    const headers = 'Timestamp,Temperature,Humidity,Flame,FlameRaw,Rain,RainRaw,Sound,Motion\n';
+    const headers = 'Timestamp,Temperature,Humidity,Gas(MQ135),Flame,FlameRaw,Rain,RainRaw,Sound,Motion\n';
     const rows = readingsHistory.map((r) =>
-      `${new Date(r.ts * 1000).toISOString()},${r.temp},${r.hum},${r.flame},${r.flameRaw},${r.rain},${r.rainRaw},${r.sound},${r.motion}`
+      `${new Date(r.ts * 1000).toISOString()},${r.temp},${r.hum},${r.gas || 0},${r.flame},${r.flameRaw},${r.rain},${r.rainRaw},${r.sound},${r.motion}`
     ).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

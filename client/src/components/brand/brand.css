@@ -1,0 +1,235 @@
+/* ══════════════════════════════════════════════════════════════
+   BRAND & ASSET SYSTEM STYLES
+   Logo, ProductIllustration, Media backdrops, Scrims, Decor
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Logo ── */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--logo-size, 28px) * 0.38);
+  color: var(--text);
+  line-height: 1;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.9;
+}
+
+.logo-mark {
+  flex-shrink: 0;
+  display: block;
+  overflow: visible;
+}
+
+.logo-text {
+  font-size: calc(var(--logo-size, 28px) * 0.78);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text);
+}
+
+/* ── Section Backdrop & Scrims ── */
+.section-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.section-backdrop picture,
+.section-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grain-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/grain.png');
+  background-repeat: repeat;
+  background-size: 512px 512px;
+  opacity: 0.05;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.backdrop-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.backdrop-scrim.scrim-center {
+  background: radial-gradient(circle at 50% 40%, rgba(7, 11, 26, 0.4) 0%, rgba(7, 11, 26, 0.85) 100%);
+}
+
+.backdrop-scrim.scrim-left {
+  background: linear-gradient(90deg, rgba(7, 11, 26, 0.88) 0%, rgba(7, 11, 26, 0.45) 55%, rgba(7, 11, 26, 0.2) 100%);
+}
+
+.backdrop-scrim.scrim-top {
+  background: linear-gradient(180deg, rgba(7, 11, 26, 0.9) 0%, rgba(7, 11, 26, 0.3) 60%, rgba(7, 11, 26, 0.8) 100%);
+}
+
+.backdrop-scrim.scrim-bottom {
+  background: linear-gradient(0deg, rgba(7, 11, 26, 0.92) 0%, rgba(7, 11, 26, 0.3) 60%, rgba(7, 11, 26, 0) 100%);
+}
+
+/* ── Aurora Divider ── */
+.aurora-divider {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 1;
+  background: #05060d;
+}
+
+.aurora-divider img {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Glow Orb ── */
+.glow-orb {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  filter: blur(48px);
+}
+
+/* ── Dot Grid ── */
+.dot-grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dot-grid-fade {
+  mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+}
+
+/* ── Status Dot ── */
+.status-dot2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dot-color, var(--ok));
+  line-height: 1;
+}
+
+.status-dot2.is-pulsing svg {
+  animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px var(--dot-color, var(--ok)));
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 1px var(--dot-color, var(--ok)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot2.is-pulsing svg {
+    animation: none !important;
+  }
+}
+
+/* ── Product Illustration ── */
+.product-illustration {
+  width: 100%;
+  max-width: 540px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 28px 48px rgba(0, 0, 0, 0.35));
+  transition: transform 0.4s ease;
+}
+
+.pi-part {
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.pi-part.is-dim {
+  opacity: 0.28;
+}
+
+.pi-glow {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.pi-glow.is-on {
+  opacity: 0.85;
+}
+
+/* ── Use Case Art ── */
+.usecase-art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: calc(var(--radius-card) - 8px);
+  overflow: hidden;
+  margin-bottom: 24px;
+  background: #080c1c;
+}
+
+.usecase-art picture,
+.usecase-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.usecase-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(10, 15, 35, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.tone-violet .usecase-badge {
+  color: #a394ff;
+}
+
+.tone-rain .usecase-badge {
+  color: #4cd4ff;
+}
+
+.tone-teal .usecase-badge {
+  color: #19c3b1;
+}

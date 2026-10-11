@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: orbit-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: ALLOW_REGISTER
+        value: "false"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: MQTT_URL
+        sync: false
+      - key: MQTT_USERNAME
+        sync: false
+      - key: MQTT_PASSWORD
+        sync: false
+      - key: MQTT_VIEWER_PASSWORD
+        sync: false
+      - key: TEAM_ID
+        sync: false
+      - key: PUBLIC_DASHBOARD
+        value: "true"
+      - key: HAS_BUZZER
+        value: "false"
